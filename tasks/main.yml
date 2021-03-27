@@ -1,23 +1,57 @@
 ---
-# Include variables and define needed variables.
-- name: Include OS-specific variables.
-  include_vars: "{{ ansible_os_family }}.yml"
-
-- name: Define phpmyadmin_config_file.
-  set_fact:
-    phpmyadmin_config_file: "{{ __phpmyadmin_config_file }}"
-  when: phpmyadmin_config_file is not defined
-
 # Setup/install tasks.
-- include: setup-RedHat.yml
-  when: ansible_os_family == 'RedHat'
+- name: install requirements
+  dnf:
+    name: ['php-json', 'php-mysql', 'php-mbstring', 'php-pecl-zip']
+    state: present
 
-- include: setup-Debian.yml
-  when: ansible_os_family == 'Debian'
+- name: Disable SELinux
+  ansible.posix.selinux:
+    state: disabled
+
+- name: modify selinux settings
+  ansible.posix.seboolean:
+    name: httpd_unified
+    state: yes
+    persistent: yes
+  when:
+    - ansible_selinux.status is defined
+    - ansible_selinux.status == "enabled"
+
+- name: Remove directory
+  file:
+    path: /opt/phpmyadmin
+    state: absent
+    
+- name: Unzip phpMyAdmin
+  unarchive:
+    src: "https://files.phpmyadmin.net/phpMyAdmin/{{ phpmyadmin_version }}/phpMyAdmin-{{ phpmyadmin_version }}-all-languages.zip"
+    dest: /opt
+    owner: nginx
+    group: nginx
+    remote_src: yes
+    mode: 0755
+
+- name: Copy phpMyAdmin
+  command: mv /opt/phpMyAdmin-{{ phpmyadmin_version }}-all-languages /opt/phpmyadmin
+
+- name: create directories
+  file:
+    path: /opt/phpmyadmin/tmp
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: 0750
+
+- name: Copy phpMyAdmin file config
+  copy:
+    src:  /opt/phpmyadmin/config.sample.inc.php
+    dest: /opt/phpmyadmin/config.inc.php
+    remote_src: yes
 
 - name: Add default username and password for MySQL connection.
   lineinfile: >
-    dest={{ phpmyadmin_config_file }}
+    dest=/opt/phpmyadmin/config.inc.php
     state=present
     regexp="^.+\['{{ item.key }}'\].+$"
     line="$cfg['Servers'][$i]['{{ item.key }}'] = '{{ item.value }}';"
@@ -36,3 +70,26 @@
       value: "{{ phpmyadmin_mysql_user }}"
     - key: password
       value: "{{ phpmyadmin_mysql_password }}"
+
+- name: Add default username and password for MySQL connection.
+  lineinfile: >
+    dest=/opt/phpmyadmin/config.inc.php
+    state=present
+    regexp="^.+\['blowfish_secret'\].+$"
+    line="$cfg['blowfish_secret'] = '{{ phpmyadmin_blowfish_secret  }}';"
+    mode=0644
+
+- name: Configure SELinux type 
+  sefcontext:
+    target: "/opt/phpmyadmin(/.*)?"
+    setype: "httpd_sys_content_t"
+    state: present
+
+- name: Apply new SELinux file context to filesystem
+  command: restorecon -iRv '/opt/phpmyadmin/'
+
+- name: Create Link
+  file:
+    src:  /opt/phpmyadmin
+    dest: /usr/share/nginx/html/phpmyadmin
+    state: link

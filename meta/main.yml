@@ -1,10 +1,4 @@
 ---
-dependencies:
-  - geerlingguy.apache
-  - geerlingguy.mysql
-  - geerlingguy.php-mysql
-  - geerlingguy.php
-
 galaxy_info:
   role_name: phpmyadmin
   author: geerlingguy
