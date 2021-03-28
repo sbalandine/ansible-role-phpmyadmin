@@ -1,9 +1,9 @@
 ---
-dependencies:
-  - sbalandine.apache
-  - sbalandine.mysql
-  - sbalandine.php-mysql
-  - sbalandine.php
+# dependencies:
+#   - nginx
+#   - mysql
+#   - php-mysql
+#   - php
 
 galaxy_info:
   role_name: phpmyadmin

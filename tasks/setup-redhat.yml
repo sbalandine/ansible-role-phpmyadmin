@@ -1,7 +1,36 @@
 ---
-- name: Ensure phpMyAdmin is installed.
-  yum:
-    name: phpmyadmin
-    state: present
-    enablerepo: "{{ phpmyadmin_enablerepo }}"
-  notify: restart apache
+- name: create directory
+  file:
+    path: /opt/phpmyadmin
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: 755
+
+- name: Download and unpack phpMyAdmin
+  unarchive:
+    src: https://files.phpmyadmin.net/phpMyAdmin/{{ phpmyadmin_version }}/phpMyAdmin-{{ phpmyadmin_version }}-all-languages.tar.gz
+    dest: /opt/phpmyadmin/
+    remote_src: yes
+    extra_opts: ['--strip-components=1']
+    mode: 0755
+
+- name: Create directories TMP
+  file:
+    path: /opt/phpmyadmin/tmp
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: 0755
+
+- name: Copy config file
+  copy:
+    src:  /opt/phpmyadmin/config.sample.inc.php
+    dest: /opt/phpmyadmin/config.inc.php
+    remote_src: yes
+
+- name: Create Link
+  file:
+    src:  /opt/phpmyadmin
+    dest: /usr/share/nginx/html/phpmyadmin
+    state: link

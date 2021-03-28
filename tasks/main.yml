@@ -3,18 +3,13 @@
 - name: Include OS-specific variables.
   include_vars: "{{ ansible_os_family | lower }}.yml"
 
-- name: Define phpmyadmin_config_file.
-  set_fact:
-    phpmyadmin_config_file: "{{ __phpmyadmin_config_file }}"
-  when: phpmyadmin_config_file is not defined
-
 # Setup/install tasks.
 - include: setup-redhat.yml
   when: ansible_os_family | lower == 'redhat'
 
 - name: Add default username and password for MySQL connection.
   lineinfile: >
-    dest={{ phpmyadmin_config_file }}
+    dest=/opt/phpmyadmin/config.inc.php
     state=present
     regexp="^.+\['{{ item.key }}'\].+$"
     line="$cfg['Servers'][$i]['{{ item.key }}'] = '{{ item.value }}';"
@@ -33,3 +28,34 @@
       value: "{{ phpmyadmin_mysql_user }}"
     - key: password
       value: "{{ phpmyadmin_mysql_password }}"
+
+- name: Add default blowfish_secret for MySQL connection.
+  lineinfile: >
+    dest=/opt/phpmyadmin/config.inc.php
+    state=present
+    regexp="^.+\['blowfish_secret'\].+$"
+    line="$cfg['blowfish_secret'] = 'dfg654df321g8s65d4f8e-g*+9';"
+    mode=0644
+
+- name: Create Link
+  file:
+    src:  /opt/phpmyadmin
+    dest: /usr/share/nginx/html/phpmyadmin
+    state: link
+
+- name: Own Session
+  file:
+    path: /var/lib/php/session
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: 755
+
+- name: Configure SELinux type 
+  sefcontext:
+    target: "/opt/phpmyadmin(/.*)?"
+    setype: "httpd_sys_content_t"
+    state: present
+
+- name: Apply new SELinux file context to filesystem
+  command: restorecon -iRv '/opt/phpmyadmin'
