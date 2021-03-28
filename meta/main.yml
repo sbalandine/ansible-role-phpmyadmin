@@ -1,0 +1,26 @@
+---
+dependencies:
+  - sbalandine.apache
+  - sbalandine.mysql
+  - sbalandine.php-mysql
+  - sbalandine.php
+
+galaxy_info:
+  role_name: phpmyadmin
+  author: sbalandine
+  description: phpMyAdmin installation for RHEL/CentOS.
+  company: "Midwestern Mac, LLC"
+  license: "license (BSD, MIT)"
+  min_ansible_version: 2.4
+  platforms:
+    - name: EL
+      versions:
+        - all
+  galaxy_tags:
+    - database
+    - development
+    - web
+    - mysql
+    - mariadb
+    - php
+    - phpmyadmin
